@@ -47,7 +47,7 @@ export default function WhySection() {
           Why this Benchmark exists?
         </h2>
         <p className="mt-5 max-w-[820px] text-[18px] md:text-[20px] leading-[1.5] text-cream/85">
-          From speaker recruitment to evaluation pipeline — the decisions that make IndicBench reproducible, auditable, and resistant to benchmark gaming.
+          From speaker recruitment to evaluation pipeline — the decisions that make BRIDGE reproducible, auditable, and resistant to benchmark gaming across every language family in the corpus.
         </p>
 
         <AnimatePresence initial={false}>
