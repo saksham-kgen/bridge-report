@@ -5,8 +5,13 @@ import { useEffect, useState } from "react";
 type Stats = { models: number; languages: number; cohorts: number };
 
 function CountUp({ to, duration = 1400 }: { to: number; duration?: number }) {
-  const [n, setN] = useState(0);
+  // Initial state matches `to` so SSR / no-JS clients see the real number,
+  // not a placeholder "00". The animation runs once on the client mount.
+  const [n, setN] = useState(to);
+  const [hasMounted, setHasMounted] = useState(false);
   useEffect(() => {
+    setHasMounted(true);
+    setN(0);
     let raf = 0;
     const start = performance.now();
     const tick = (t: number) => {
@@ -18,7 +23,9 @@ function CountUp({ to, duration = 1400 }: { to: number; duration?: number }) {
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [to, duration]);
-  return <span>{String(n).padStart(2, "0")}</span>;
+  // Avoid a hydration flash by rendering `to` until client effect runs.
+  const value = hasMounted ? n : to;
+  return <span>{String(value).padStart(2, "0")}</span>;
 }
 
 // Figma spec hardcodes the static numbers; data still drives the rest of the site.

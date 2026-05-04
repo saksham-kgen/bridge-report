@@ -42,6 +42,11 @@ const num = (v) => {
 const indicRaw = parseCSV(fs.readFileSync(path.join(root, "data/indic.csv"), "utf8"));
 const intlRaw = parseCSV(fs.readFileSync(path.join(root, "data/intl.csv"), "utf8"));
 
+// AWS Transcribe is included in the source CSV for contextual reference only.
+// The published BRIDGE benchmark excludes it from rankings (matches the
+// methodology brief), so we filter it out before any aggregation runs.
+const EXCLUDED_PROVIDERS = new Set(["aws_transcribe"]);
+
 // Display names + speed tier for each provider/model combo.
 const MODEL_INFO = {
   "elevenlabs/scribe_v2": { name: "ElevenLabs Scribe v2", short: "scribe v2", tier: "real-time" },
@@ -80,7 +85,7 @@ const cleanRegion = (s) => (VALID_REGIONS.has(s) ? s : "");
 
 // Normalize an indic row.
 const indicRows = indicRaw
-  .filter((r) => r.provider && r.model)
+  .filter((r) => r.provider && r.model && !EXCLUDED_PROVIDERS.has(r.provider))
   .map((r) => {
     const wer = num(r.WER);
     const cer = num(r.CER);
@@ -112,7 +117,7 @@ const indicRows = indicRaw
   });
 
 const intlRows = intlRaw
-  .filter((r) => r.provider && r.model)
+  .filter((r) => r.provider && r.model && !EXCLUDED_PROVIDERS.has(r.provider))
   .map((r) => {
     const wer = num(String(r.WER).replace("%", ""));
     return {
@@ -230,10 +235,14 @@ const COHORT_DIMS = {
 function cohortSplit(dim, metric) {
   const field = COHORT_DIMS[dim];
   if (!field) return [];
-  const byKey = groupBy(allRows.filter((r) => r[field]), (r) => r.key);
+  // Per-category numbers must come from rows that have the cohort field;
+  // but `overall` for a model needs to match the leaderboard, so it's
+  // computed across ALL rows for that model regardless of cohort presence.
+  const byKeyForCats = groupBy(allRows.filter((r) => r[field]), (r) => r.key);
+  const byKeyAll = groupBy(allRows, (r) => r.key);
   const cats = Array.from(new Set(allRows.map((r) => r[field]).filter(Boolean)));
   const out = [];
-  for (const [key, group] of byKey.entries()) {
+  for (const [key, group] of byKeyForCats.entries()) {
     const perCat = {};
     for (const cat of cats) {
       const xs = group.filter((g) => g[field] === cat).map((g) => g[metric]).filter((v) => v !== null);
@@ -242,7 +251,8 @@ function cohortSplit(dim, metric) {
     }
     const valuesArr = Object.values(perCat).map((v) => v.value);
     if (valuesArr.length < 2) continue;
-    const overall = mean(group.map((r) => r[metric]).filter((v) => v !== null));
+    const allForModel = byKeyAll.get(key) || group;
+    const overall = mean(allForModel.map((r) => r[metric]).filter((v) => v !== null));
     const spread = Math.max(...valuesArr) - Math.min(...valuesArr);
     out.push({
       key,
@@ -271,7 +281,9 @@ function csF1Summary() {
   const out = [];
   for (const [key, group] of byKey.entries()) {
     const xs = group.map((r) => r.CS_F1).filter((v) => v !== null);
-    if (xs.length < 5) continue;
+    // Threshold of 2 keeps small-coverage providers (e.g. Gnani) in the
+    // chart so the model set lines up with the leaderboard above.
+    if (xs.length < 2) continue;
     out.push({ key, name: modelDisplay(key), value: mean(xs), n: xs.length });
   }
   out.sort((a, b) => b.value - a.value);

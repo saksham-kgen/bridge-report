@@ -24,7 +24,7 @@ const CARDS = [
   {
     head: "(7-metric evaluation stack)",
     body:
-      "Each (audio, model) pair scored on: WER & CER (word/character accuracy), Semantic Similarity (meaning preservation via multilingual embeddings), CS F1 (code-switching quality), PIER (English token recall), toWER (phonetic WER via ITRANS), and OIWER (orthography-informed WER). WER alone is insufficient — a model can score WER 0.97 and SemanticSim 0.99 simultaneously.",
+      "Each (audio, model) pair scored on: WER & CER (word/character accuracy), Semantic Similarity (meaning preservation via multilingual embeddings), CS F1 (code-switching quality, Indic-only), PIER (English token recall), toWER (phonetic WER via ITRANS), and OIWER (orthography-informed WER). WER alone is insufficient — on Vietnamese, models can post WER above 17% while SemanticSim stays above 0.93 simply because of tone-mark encoding variation.",
   },
   {
     head: "(Cohort attribution)",
@@ -38,8 +38,8 @@ export default function Methodology() {
     <section id="methodology" className="pt-28 md:pt-36 scroll-mt-24">
       <SectionHeader
         eyebrow="Methodology"
-        title="How the Benchmark was built ?"
-        intro="From speaker recruitment to evaluation pipeline — the decisions that make IndicBench reproducible, auditable, and resistant to benchmark gaming."
+        title="How the Benchmark was built?"
+        intro="A naturalistic dual-speaker corpus, three normalisation layers run on every transcript, and a 7-metric scoring stack tagged across 7 cohort dimensions — the same pipeline applied identically to Indic and International audio so cross-language results stay comparable."
       />
 
       <div className="mt-14">

@@ -115,7 +115,9 @@ export default function HiddenQualityGap({ data }: { data: DataShape }) {
                   className={`mt-3 text-[12px] ${active ? "text-cream/60" : "text-ink/55"} tabular-nums`}
                 >
                   {matches.length} model{matches.length === 1 ? "" : "s"} in this bucket
-                  {matches.length ? ` · ${matches.map((m) => m.name).slice(0, 3).join(", ")}` : ""}
+                  {matches.length
+                    ? ` · ${matches.map((m) => `${m.name} (${m.value.toFixed(3)})`).join(", ")}`
+                    : ""}
                 </div>
               </button>
             );

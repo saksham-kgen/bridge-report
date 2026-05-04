@@ -48,9 +48,9 @@ export default function KeyFindings({ data }: { data: DataShape }) {
     },
     {
       eyebrow: "Finding 05 · Geography & dialect",
-      title: "Cross-state Indic pairs, Venezuelan Spanish, and Brazilian Portuguese are the consistently hardest splits",
+      title: "Venezuelan Spanish, Brazilian Portuguese, and cross-state Indic pairs are the consistently hardest splits — for most models",
       body:
-        "Indic: cross-state speaker pairs are systematically harder than same-state — dialect mixing produces a quantifiably harder signal. International: Venezuelan Spanish (Caribbean /s/ aspiration) is the hardest dialect for 9 of 11 models (up to +6.57pp vs. Peruvian); Brazilian Portuguese is harder than Spanish for every model except Scribe v2 (PT–ES gap 0.64–8.76pp). Aggregate WER systematically understates real-world error rates for these splits — evaluate explicitly on your target dialect.",
+        "International: Venezuelan Spanish (Caribbean /s/ aspiration) is the hardest dialect for 9 of 11 models (up to +6.57pp vs. Peruvian); Brazilian Portuguese is harder than Spanish for every model except Scribe v2 (PT–ES gap 0.64–8.76pp). Indic: cross-state speaker pairs are harder for most models — but not all. Scribe v2 actually performs better cross-state than same-state on the Indic corpus, an exception worth noting. Aggregate WER systematically understates real-world error rates for these splits — evaluate explicitly on your target dialect.",
     },
     {
       eyebrow: "Finding 06 · Deployment profiles",
