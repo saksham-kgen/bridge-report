@@ -2,13 +2,13 @@
 import { useState } from "react";
 import SectionHeader from "./SectionHeader";
 
-const CITATION = `@misc{humynlabs_indicbench_2026,
-  title  = {HumynLabs-IndicBench: State of Indic Conversational ASR},
+const CITATION = `@misc{humynlabs_bridge_2026,
+  title  = {BRIDGE: State of Conversational ASR Across the Global South},
   author = {HumynLabs Research Team},
   year   = {2026},
   month  = {April},
-  note   = {Benchmark evaluating 14+ commercial ASR APIs on dual-speaker Indic conversations across 15+ languages, 7 cohort dimensions},
-  url    = {https://humynlabs.ai/indicbench},
+  note   = {Independent benchmark evaluating 15 commercial ASR APIs on dual-speaker conversational audio across 20 languages — Indic (17 languages, 22+ Indian states), Latin American Spanish (Argentinian, Peruvian, Venezuelan), Brazilian Portuguese, and Vietnamese — scored on a 7-metric stack across 7 cohort dimensions},
+  url    = {https://bridge-report-hazel.vercel.app},
   howpublished = {HumynLabs}
 }`;
 
@@ -28,7 +28,7 @@ export default function DatasetCitation() {
       <SectionHeader
         eyebrow="Access the dataset"
         title="Dataset access & citation"
-        intro="IndicBench data is available on Hugging Face. If you use this benchmark in your research, please cite the following."
+        intro="The full BRIDGE corpus — Indic + Latin American Spanish + Brazilian Portuguese + Vietnamese — is available on Hugging Face. If you use this benchmark in your research, please cite the following."
       />
 
       <div className="mt-10 rounded-[20px] bg-accent text-white p-8 md:p-10 overflow-hidden relative">
@@ -43,7 +43,7 @@ export default function DatasetCitation() {
         <div className="relative">
           <div className="eyebrow !text-white/85">Access the dataset</div>
           <p className="mt-4 max-w-[760px] text-[16px] md:text-[17px] leading-[1.6] text-white/90">
-            Audio files, golden transcripts, speaker metadata, cohort labels, and evaluation scripts are available under the IndicBench dataset card. Additional languages and an overlap-focused corpus are in preparation.
+            Audio files, golden transcripts, speaker metadata, cohort labels, and evaluation scripts are available under the BRIDGE dataset card on Hugging Face — covering Indic (17 languages), Latin American Spanish (3 dialects), Brazilian Portuguese, and Vietnamese. Additional languages and an overlap-focused corpus are in preparation.
           </p>
           <a
             href="https://huggingface.co/humyn-labs/datasets"
@@ -77,7 +77,7 @@ export default function DatasetCitation() {
       <div className="mt-16 text-center max-w-[640px] mx-auto">
         <div className="eyebrow">Collaborate or partner</div>
         <p className="mt-4 text-[15px] leading-[1.7] text-ink/75">
-          If you work on Indic ASR and want to submit your model for evaluation, or partner on expanding the corpus, contact the IndicBench team at{" "}
+          If you work on conversational ASR and want to submit your model for evaluation, or partner on expanding the corpus into new languages, contact the BRIDGE team at{" "}
           <a className="underline decoration-accent underline-offset-4" href="https://humynlabs.ai">
             humynlabs.ai
           </a>
