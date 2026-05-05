@@ -11,19 +11,19 @@ const BUCKETS = [
     label: "Strong code-switching — CS F1 ≥ 0.7",
     range: [0.7, 1.01] as const,
     body:
-      "These models preserve English vocabulary in Indic speech. Both are viable for enterprise applications where English terminology appears in native-language conversation.",
+      "These models preserve English vocabulary in Indic speech reliably. Suitable for enterprise applications where English terminology appears mid-sentence in native-language conversation.",
   },
   {
-    label: "Partial — CS F1 0.2–0.7",
-    range: [0.2, 0.7] as const,
+    label: "Partial — CS F1 0.4–0.7",
+    range: [0.4, 0.7] as const,
     body:
-      "These models handle some code-switching. Performance varies by language and English density — verify on your specific use case before shipping.",
+      "These models handle code-switching inconsistently. Performance varies by language and English density — verify on your specific use case before shipping.",
   },
   {
-    label: "Zero code-switching — CS F1 < 0.2",
-    range: [0, 0.2] as const,
+    label: "Weak — CS F1 < 0.4",
+    range: [0, 0.4] as const,
     body:
-      "These models systematically transliterate or drop English tokens. Not suitable for code-mixed enterprise Indic applications.",
+      "These models systematically drop or transliterate English tokens. Not suitable for code-mixed enterprise Indic applications without post-processing.",
   },
 ] as const;
 

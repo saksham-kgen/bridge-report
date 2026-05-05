@@ -32,15 +32,22 @@ function parseCSV(text) {
   });
 }
 
+// Some source columns (notably WER in the "final" indic CSV and the intl CSV)
+// arrive as percent strings like "0.17%" or "382.24%". Others (CER, SemSim,
+// CS_F1) arrive as decimals. Auto-divide by 100 when "%" is present so every
+// downstream code path can assume a 0–1 decimal.
 const num = (v) => {
   if (v === undefined || v === null || v === "") return null;
-  const s = String(v).replace("%", "").trim();
-  const n = Number(s);
-  return Number.isFinite(n) ? n : null;
+  const s = String(v).trim();
+  const hasPct = s.endsWith("%");
+  const cleaned = hasPct ? s.slice(0, -1).trim() : s;
+  const n = Number(cleaned);
+  if (!Number.isFinite(n)) return null;
+  return hasPct ? n / 100 : n;
 };
 
-const indicRaw = parseCSV(fs.readFileSync(path.join(root, "data/indic.csv"), "utf8"));
-const intlRaw = parseCSV(fs.readFileSync(path.join(root, "data/intl.csv"), "utf8"));
+const indicRaw = parseCSV(fs.readFileSync(path.join(root, "data/source/indic-benchmark-final.csv"), "utf8"));
+const intlRaw = parseCSV(fs.readFileSync(path.join(root, "data/source/intl.csv"), "utf8"));
 
 // AWS Transcribe is included in the source CSV for contextual reference only.
 // The published BRIDGE benchmark excludes it from rankings (matches the
@@ -119,7 +126,6 @@ const indicRows = indicRaw
 const intlRows = intlRaw
   .filter((r) => r.provider && r.model && !EXCLUDED_PROVIDERS.has(r.provider))
   .map((r) => {
-    const wer = num(String(r.WER).replace("%", ""));
     return {
       key: modelKey(r.provider, r.model),
       provider: r.provider,
@@ -135,7 +141,7 @@ const intlRows = intlRaw
       gap: stripParen(r.Gap),
       density: stripParen(r.Conv_Density),
       duration_cat: stripParen(r.Duration_Cat),
-      WER: wer === null ? null : wer / 100,
+      WER: num(r.WER),
       CER: num(r.CER),
       SemanticSim: num(r.SemanticSim),
       // Code-switch / phonetic / overlap-informed metrics are not in the international CSV.

@@ -44,7 +44,7 @@ export default function KeyFindings({ data }: { data: DataShape }) {
       eyebrow: "Finding 04 · Code-switch quality gap",
       title: "Code-switching is the sharpest Indic-only differentiator — and CS F1 exposes it",
       body:
-        "CS F1 spread on Indic runs 0.000 → 0.906. Deepgram nova-3 (0.906) and Scribe v2 (0.736) preserve English vocabulary in native-language speech; three models score near zero — they systematically transliterate or drop English tokens. WER alone hides this entirely. On Vietnamese the analogous diagnostic is the high-WER / high-SemanticSim split: WER 17% with SemanticSim 0.94 indicates correct meaning rendered in non-reference surface form (often tone-mark encoding variation).",
+        "CS F1 spread on Indic runs 0.246 → 0.906. Deepgram Nova-3 (0.906), Azure ConvTranscriber (0.857) and ElevenLabs Scribe v2 (0.830) preserve English vocabulary in native-language speech; the bottom of the field (Gladia v2 at 0.246, GPT-4o mini at 0.327, AssemblyAI at 0.367) systematically drops or transliterates English tokens. WER alone hides this entirely. On Vietnamese the analogous diagnostic is the high-WER / high-SemanticSim split: WER 17% with SemanticSim 0.94 indicates correct meaning rendered in non-reference surface form (often tone-mark encoding variation).",
     },
     {
       eyebrow: "Finding 05 · Geography & dialect",

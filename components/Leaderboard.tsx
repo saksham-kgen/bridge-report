@@ -141,7 +141,7 @@ export default function Leaderboard({ data }: { data: DataShape }) {
           </ul>
 
           <p className="mt-8 text-[12px] leading-[1.6] text-cream/55 max-w-[800px]">
-            Bars show mean {data.metricLabels[metric]} per model on the selected language slice. Models with fewer than 2 audio samples per slice are excluded. Source: 2,139 indic + 577 international evaluation rows.
+            Bars show mean {data.metricLabels[metric]} per model on the selected language slice. Models with fewer than 2 audio samples per slice are excluded. Source: 2,014 Indic + 577 International evaluation rows; AWS Transcribe excluded from rankings.
           </p>
         </div>
       </div>
