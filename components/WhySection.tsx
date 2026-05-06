@@ -16,7 +16,7 @@ const CARDS = [
   {
     title: "7 metrics, not just WER",
     body:
-      "WER alone is blind to meaning and code-switching correctness. Our stack adds CER, Semantic Similarity, CS F1, PIER, toWER and OIWER — so a model can't hide poor Hindi-English switching or tone-mark drift behind a decent word count.",
+      "WER alone is blind to meaning and code-switching correctness. Our stack adds CER, SemSim, CS F1, lwWER, PIER and WIL — so a model can't hide poor Hindi-English switching, transliterated loan words, or tone-mark drift behind a decent word count.",
   },
 ];
 

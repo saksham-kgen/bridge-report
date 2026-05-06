@@ -3,11 +3,11 @@ import SectionHeader from "./SectionHeader";
 const METRICS = [
   "WER — Word Error Rate",
   "CER — Character Error Rate",
-  "Semantic Similarity",
+  "SemSim — Semantic Similarity",
   "CS F1 — Code-Switch F1",
+  "lwWER — Loan Word WER",
   "PIER — Phoneme-Informed ER",
-  "toWER — Time-Offset WER",
-  "OIWER — Overlap-Informed WER",
+  "WIL — Word Information Lost",
 ];
 
 const CARDS = [
@@ -24,7 +24,7 @@ const CARDS = [
   {
     head: "(7-metric evaluation stack)",
     body:
-      "Each (audio, model) pair scored on: WER & CER (word/character accuracy), Semantic Similarity (meaning preservation via multilingual embeddings), CS F1 (code-switching quality, Indic-only), PIER (English token recall), toWER (phonetic WER via ITRANS), and OIWER (orthography-informed WER). WER alone is insufficient — on Vietnamese, models can post WER above 17% while SemanticSim stays above 0.93 simply because of tone-mark encoding variation.",
+      "Each (audio, model) pair scored on: WER & CER (word/character accuracy), SemSim (meaning preservation via multilingual embeddings), CS F1 (code-switching quality, Indic-only), lwWER (loan-word-aware WER that ignores English transliteration noise, Indic-only), PIER (phoneme-informed ER, Indic-only), and WIL (word information lost — bounded WER variant that penalises under- and over-transcription symmetrically). WER alone is insufficient — on Vietnamese, models can post WER above 17% while SemSim stays above 0.93 simply because of tone-mark encoding variation.",
   },
   {
     head: "(Cohort attribution)",

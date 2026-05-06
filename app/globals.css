@@ -166,6 +166,7 @@ html, body {
   border-radius: 6px;
   background: rgba(229,227,223,0.06);
   overflow: hidden;
+  isolation: isolate;
 }
 .bar-fill {
   position: absolute; inset-y: 0; left: 0; top: 0; bottom: 0;

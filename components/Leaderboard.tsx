@@ -5,12 +5,16 @@ import SectionHeader from "./SectionHeader";
 import Dropdown from "./Dropdown";
 
 type Row = { key: string; name: string; value: number; n: number; tier: string; wer: number | null };
+type Scope = "All" | "Indic" | "International";
 type DataShape = {
   metrics: string[];
   metricLabels: Record<string, string>;
   higherIsBetter: string[];
   languages: string[];
-  leaderboard: Record<string, Record<string, Row[]>>;
+  scopes: Scope[];
+  scopedLanguages: Record<Scope, string[]>;
+  // leaderboard[scope][language][metric]
+  leaderboard: Record<Scope, Record<string, Record<string, Row[]>>>;
   findings: { werLeader: { name: string; value: number } | null };
 };
 
@@ -20,13 +24,23 @@ function formatMetric(metric: string, v: number) {
 }
 
 export default function Leaderboard({ data }: { data: DataShape }) {
+  const [scope, setScope] = useState<Scope>("All");
   const [language, setLanguage] = useState<string>("All");
   const [metric, setMetric] = useState<string>("WER");
 
+  // When scope changes, keep "language" valid for the new scope.
+  const scopeLanguages = data.scopedLanguages[scope] ?? [];
+  const onScopeChange = (s: Scope) => {
+    setScope(s);
+    if (language !== "All" && !data.scopedLanguages[s].includes(language)) {
+      setLanguage("All");
+    }
+  };
+
   const rows = useMemo<Row[]>(() => {
-    const list = data.leaderboard[language]?.[metric] ?? [];
-    return list.slice(0, 14);
-  }, [data.leaderboard, language, metric]);
+    const list = data.leaderboard[scope]?.[language]?.[metric] ?? [];
+    return list.slice(0, 15);
+  }, [data.leaderboard, scope, language, metric]);
 
   const higherBetter = data.higherIsBetter.includes(metric);
   const max = useMemo(() => {
@@ -39,18 +53,25 @@ export default function Leaderboard({ data }: { data: DataShape }) {
   const ticks = 6;
   const step = max / ticks;
 
-  const langOptions = ["All", ...data.languages];
+  const langOptions = ["All", ...scopeLanguages];
   const metricOptions = data.metrics;
+  const scopeOptions: Scope[] = (data.scopes && data.scopes.length ? data.scopes : ["All", "Indic", "International"]) as Scope[];
 
   return (
     <section id="leaderboard" className="pt-28 md:pt-36 scroll-mt-24">
       <SectionHeader
         eyebrow="Results"
         title="Model Leaderboard"
-        intro="All 14 models on WER (and more). Filter by language to see how each model performs per-language. Filter by metric to change what the bars represent."
+        intro="All 15 models on WER (and more). Filter by scope, language, and metric to drill into how each provider performs on the slice that matches your deployment."
       />
 
       <div className="mt-10 flex flex-wrap items-center gap-3">
+        <Dropdown
+          label="Scope"
+          value={scope}
+          options={scopeOptions}
+          onChange={onScopeChange}
+        />
         <Dropdown
           label="Language"
           value={language}
@@ -72,6 +93,7 @@ export default function Leaderboard({ data }: { data: DataShape }) {
       <div className="mt-6 dark-card grain-overlay rounded-[24px] overflow-hidden p-5 md:p-10">
         <div className="flex flex-wrap items-baseline justify-between gap-4">
           <div className="display text-[22px] md:text-[26px] text-cream">
+            {scope === "All" ? "All scopes" : scope} <span className="text-cream/40">·</span>{" "}
             {language === "All" ? "All languages" : language} <span className="text-cream/40">·</span>{" "}
             {data.metricLabels[metric]} ({metric})
           </div>
@@ -81,7 +103,7 @@ export default function Leaderboard({ data }: { data: DataShape }) {
         </div>
 
         <div className="mt-8">
-          <div className="grid grid-cols-[110px_1fr_50px] md:grid-cols-[220px_1fr_72px] gap-4 items-center">
+          <div className="grid grid-cols-[110px_1fr] md:grid-cols-[220px_1fr] gap-4 items-center">
             <div />
             <div className="relative h-7 text-[11px] text-cream/50 tabular-nums">
               <div className="absolute inset-0 flex">
@@ -97,7 +119,6 @@ export default function Leaderboard({ data }: { data: DataShape }) {
                 ))}
               </div>
             </div>
-            <div />
           </div>
 
           <ul className="mt-2 divide-y divide-cream/8">
@@ -110,7 +131,7 @@ export default function Leaderboard({ data }: { data: DataShape }) {
               return (
                 <li
                   key={r.key}
-                  className="grid grid-cols-[110px_1fr_50px] md:grid-cols-[220px_1fr_72px] items-center gap-4 py-3"
+                  className="grid grid-cols-[110px_1fr] md:grid-cols-[220px_1fr] items-center gap-4 py-3"
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="truncate text-cream text-[14px] md:text-[15px]">{r.name}</span>
@@ -132,16 +153,13 @@ export default function Leaderboard({ data }: { data: DataShape }) {
                       <span className="text-[12px] tabular-nums">{formatMetric(metric, r.value)}</span>
                     </motion.div>
                   </div>
-                  <div className="text-right text-cream/55 text-[12px] tabular-nums">
-                    {r.n}
-                  </div>
                 </li>
               );
             })}
           </ul>
 
           <p className="mt-8 text-[12px] leading-[1.6] text-cream/55 max-w-[800px]">
-            Bars show mean {data.metricLabels[metric]} per model on the selected language slice. Models with fewer than 2 audio samples per slice are excluded. Source: 2,014 Indic + 577 International evaluation rows; AWS Transcribe excluded from rankings.
+            Bars show mean {data.metricLabels[metric]} per model on the selected language slice for the collected dual-speaker conversations 10–15 minutes long, captured at 44–48 kHz.
           </p>
         </div>
       </div>
@@ -158,7 +176,7 @@ export default function Leaderboard({ data }: { data: DataShape }) {
                 : "Leaderboard summary"}
             </h3>
             <p className="mt-3 text-[15px] leading-[1.65] text-ink/70">
-              The only model simultaneously accurate and code-switch aware. Deepgram nova-3 has the best CS F1 but limited language coverage. Several models sit above 30% WER — not production-ready for Indic conversational audio.
+              The only model simultaneously accurate and code-switch aware. Deepgram nova-3 has the best CS F1 but limited language coverage. Several models sit above 30% WER — not production-ready for Global South conversational audio.
             </p>
           </div>
           {/* eslint-disable-next-line @next/next/no-img-element */}

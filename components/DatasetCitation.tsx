@@ -7,7 +7,7 @@ const CITATION = `@misc{humynlabs_bridge_2026,
   author = {HumynLabs Research Team},
   year   = {2026},
   month  = {April},
-  note   = {Independent benchmark evaluating 14 commercial ASR APIs on dual-speaker conversational audio across 22 languages — Indic (17 languages spanning 22+ Indian states), Latin American Spanish (Argentinian, Peruvian, Venezuelan), Brazilian Portuguese, and Vietnamese — scored on a 7-metric stack across 7 cohort dimensions. AWS Transcribe excluded from rankings.},
+  note   = {Independent benchmark evaluating 15 commercial ASR APIs on dual-speaker conversational audio across 22 languages — Indic (17 languages spanning 22+ Indian states), Latin American Spanish (Argentinian, Peruvian, Venezuelan), Brazilian Portuguese, and Vietnamese — scored on a 7-metric stack across 7 cohort dimensions.},
   url    = {https://bridge-report-hazel.vercel.app},
   howpublished = {HumynLabs}
 }`;

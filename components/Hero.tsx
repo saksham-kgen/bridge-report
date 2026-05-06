@@ -28,9 +28,9 @@ function CountUp({ to, duration = 1400 }: { to: number; duration?: number }) {
   return <span>{String(value).padStart(2, "0")}</span>;
 }
 
-// Figma spec hardcodes the static numbers; data still drives the rest of the site.
+// Static numbers per the BRIDGE roster; the live data drives everything below.
 const HERO_STATS = [
-  { n: 14, label: "ASR Models Tested" },
+  { n: 15, label: "ASR Models Tested" },
   { n: 22, label: "International Languages" },
   { n: 7, label: "Cohort Dimensions" },
 ];
@@ -102,7 +102,7 @@ export default function Hero(_props: { hero: Stats }) {
           transition={{ duration: 0.7, delay: 0.35 }}
           className="mt-4 mx-auto max-w-[780px] text-[17px] md:text-[19px] leading-[1.55] text-ink/85 tracking-[-0.02em]"
         >
-          BRIDGE is the first independent Global South ASR benchmark evaluating 14 global models across 22 languages on a first-of-its-kind 7 metric stack.
+          BRIDGE is the first independent Global South ASR benchmark evaluating 15 global models across 22 languages on a first-of-its-kind 7 metric stack.
         </motion.p>
 
         <motion.div

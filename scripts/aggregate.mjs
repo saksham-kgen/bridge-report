@@ -49,10 +49,9 @@ const num = (v) => {
 const indicRaw = parseCSV(fs.readFileSync(path.join(root, "data/source/indic-benchmark-final.csv"), "utf8"));
 const intlRaw = parseCSV(fs.readFileSync(path.join(root, "data/source/intl.csv"), "utf8"));
 
-// AWS Transcribe is included in the source CSV for contextual reference only.
-// The published BRIDGE benchmark excludes it from rankings (matches the
-// methodology brief), so we filter it out before any aggregation runs.
-const EXCLUDED_PROVIDERS = new Set(["aws_transcribe"]);
+// AWS Transcribe is included in the published BRIDGE leaderboard (15-model
+// roster). Use this set to exclude any future contextual-only providers.
+const EXCLUDED_PROVIDERS = new Set();
 
 // Display names + speed tier for each provider/model combo.
 const MODEL_INFO = {
@@ -84,11 +83,109 @@ function modelDisplay(key) {
 // Strip a trailing parenthetical e.g. "Medium (5-15 min)" -> "Medium"
 const stripParen = (s) => (s || "").replace(/\s*\([^)]*\)\s*$/, "").trim();
 
-// Indic region uses categorical labels like "Same State" / "Different State".
-// Intl region holds city names (Jacareí, São Paulo, ...) which don't belong
-// on the same axis, so we drop region for those rows entirely.
-const VALID_REGIONS = new Set(["Same State", "Different State", "Cross State", "Unknown"]);
-const cleanRegion = (s) => (VALID_REGIONS.has(s) ? s : "");
+// ---- Cohort schemas --------------------------------------------------------
+// Each cohort dimension has a fixed canonical category set + display order.
+// The map() function normalises every raw value (Indic + Intl) onto that set;
+// anything that doesn't map (city names, "Unknown", "Youth", "Male"/"Female"
+// gender labels, etc.) returns "" so the row is excluded from cohort splits
+// for that dimension while still contributing to overall leaderboard numbers.
+const COHORT_SCHEMAS = {
+  Region: {
+    field: "region",
+    order: ["Same State", "Cross State"],
+    map: (raw) => {
+      const v = stripParen(raw);
+      if (!v) return "";
+      if (v === "Same State") return "Same State";
+      if (v === "Cross State" || v === "Different State") return "Cross State";
+      return "";
+    },
+  },
+  Gender: {
+    field: "gender",
+    order: ["Same Gender", "Mixed Gender"],
+    map: (raw) => {
+      const v = stripParen(raw);
+      if (!v) return "";
+      const t = v.toLowerCase();
+      if (t === "same" || t === "same gender") return "Same Gender";
+      if (t === "mixed" || t === "mixed gender") return "Mixed Gender";
+      return "";
+    },
+  },
+  Age: {
+    field: "age",
+    order: ["Same Age Group", "Mixed Age Group"],
+    map: (raw) => {
+      const v = stripParen(raw);
+      if (!v) return "";
+      const t = v.toLowerCase();
+      if (t === "same" || t === "same age" || t === "same age group") return "Same Age Group";
+      if (t === "mixed" || t === "mixed age" || t === "mixed age group") return "Mixed Age Group";
+      return "";
+    },
+  },
+  Density: {
+    field: "density",
+    order: ["Monologue-like", "Balanced Dialogue", "Rapid Exchange"],
+    map: (raw) => {
+      const v = stripParen(raw);
+      if (!v) return "";
+      const t = v.toLowerCase();
+      if (t === "low" || t.includes("monologue")) return "Monologue-like";
+      if (t === "medium" || t.includes("balanced")) return "Balanced Dialogue";
+      if (t === "high" || t.includes("rapid")) return "Rapid Exchange";
+      return "";
+    },
+  },
+  Duration: {
+    field: "duration_cat",
+    order: ["Short", "Medium", "Long", "Very Long"],
+    map: (raw) => {
+      const v = stripParen(raw);
+      if (!v) return "";
+      if (["Short", "Medium", "Long", "Very Long"].includes(v)) return v;
+      return "";
+    },
+  },
+  Overlap: {
+    field: "overlap",
+    order: ["No Overlap", "Has Overlap"],
+    map: (raw) => {
+      const v = stripParen(raw);
+      if (!v) return "";
+      const t = v.toLowerCase();
+      if (t === "no overlap" || t === "none" || t === "no") return "No Overlap";
+      if (t === "has overlap" || t === "yes" || t === "overlap" || t.startsWith("low") || t.startsWith("high")) return "Has Overlap";
+      return "";
+    },
+  },
+  Gap: {
+    field: "gap",
+    order: ["No Gap", "Low", "Medium", "High"],
+    map: (raw) => {
+      const v = stripParen(raw);
+      if (!v) return "";
+      const t = v.toLowerCase();
+      if (t === "no gap" || t === "none") return "No Gap";
+      if (t.startsWith("low")) return "Low";
+      if (t.startsWith("medium")) return "Medium";
+      if (t.startsWith("high")) return "High";
+      return "";
+    },
+  },
+};
+
+// Apply every schema's map() to a raw row, producing the cohort fields used
+// downstream by aggregation.
+function normaliseCohorts(raw) {
+  const out = {};
+  for (const dim of Object.keys(COHORT_SCHEMAS)) {
+    const s = COHORT_SCHEMAS[dim];
+    out[s.field] = s.map(raw[s.field] ?? "");
+  }
+  return out;
+}
 
 // Normalize an indic row.
 const indicRows = indicRaw
@@ -96,6 +193,15 @@ const indicRows = indicRaw
   .map((r) => {
     const wer = num(r.WER);
     const cer = num(r.CER);
+    const cohorts = normaliseCohorts({
+      region: r.Region,
+      gender: r.Gender_Type,
+      age: r.Age_Group,
+      overlap: r.Overlap,
+      gap: r.Gap,
+      density: r.Conv_Density,
+      duration_cat: r.Duration_Cat,
+    });
     return {
       key: modelKey(r.provider, r.model),
       provider: r.provider,
@@ -103,13 +209,7 @@ const indicRows = indicRaw
       language: (r.language || "").trim(),
       cohort: (r.Cohort || "").trim(),
       sub_cohort: (r.Sub_Cohort || "").trim(),
-      gender: (r.Gender_Type || "").trim(),
-      region: cleanRegion((r.Region || "").trim()),
-      age: (r.Age_Group || "").trim(),
-      overlap: stripParen(r.Overlap),
-      gap: stripParen(r.Gap),
-      density: stripParen(r.Conv_Density),
-      duration_cat: stripParen(r.Duration_Cat),
+      ...cohorts,
       WER: wer,
       CER: cer,
       SemanticSim: num(r.SemanticSim),
@@ -117,6 +217,10 @@ const indicRows = indicRaw
       CS_Recall: num(r.CS_Recall),
       CS_Precision: num(r.CS_Precision),
       PIER: num(r.PIER),
+      lwWER: num(r.lwWER),
+      WIL: num(r.WIL),
+      // toWER / OIWER are still parsed for archival completeness but are
+      // not exposed in the published metric set.
       toWER: num(r.toWER),
       OIWER: num(r.OIWER),
       LevenshteinSim: num(r.LevenshteinSim),
@@ -126,6 +230,15 @@ const indicRows = indicRaw
 const intlRows = intlRaw
   .filter((r) => r.provider && r.model && !EXCLUDED_PROVIDERS.has(r.provider))
   .map((r) => {
+    const cohorts = normaliseCohorts({
+      region: r.Region,
+      gender: r.Gender_Type,
+      age: r.Age_Group,
+      overlap: r.Overlap,
+      gap: r.Gap,
+      density: r.Conv_Density,
+      duration_cat: r.Duration_Cat,
+    });
     return {
       key: modelKey(r.provider, r.model),
       provider: r.provider,
@@ -134,21 +247,18 @@ const intlRows = intlRaw
       language: (r.Language || r.locale || "").trim(),
       cohort: (r.Cohort || "").trim(),
       sub_cohort: (r.Sub_Cohort || "").trim(),
-      gender: (r.Gender_Type || "").trim(),
-      region: cleanRegion((r.Region || "").trim()),
-      age: (r.Age_Group || "").trim(),
-      overlap: stripParen(r.Overlap),
-      gap: stripParen(r.Gap),
-      density: stripParen(r.Conv_Density),
-      duration_cat: stripParen(r.Duration_Cat),
+      ...cohorts,
       WER: num(r.WER),
       CER: num(r.CER),
       SemanticSim: num(r.SemanticSim),
-      // Code-switch / phonetic / overlap-informed metrics are not in the international CSV.
+      WIL: num(r.WIL),
+      // Code-switch / phonetic / loan-word metrics are not in the
+      // international CSV (no Indic-style code-switching to measure).
       CS_F1: null,
       CS_Recall: null,
       CS_Precision: null,
       PIER: null,
+      lwWER: null,
       toWER: null,
       OIWER: null,
       LevenshteinSim: num(r.LevenshteinSim),
@@ -180,24 +290,37 @@ function mean(arr) {
   return xs.reduce((a, b) => a + b, 0) / xs.length;
 }
 
-const METRICS = ["WER", "CER", "SemanticSim", "CS_F1", "PIER", "toWER", "OIWER"];
+const METRICS = ["WER", "CER", "SemanticSim", "CS_F1", "lwWER", "PIER", "WIL"];
 const METRIC_LABELS = {
   WER: "Word Error Rate",
   CER: "Character Error Rate",
   SemanticSim: "Semantic Similarity",
   CS_F1: "Code-Switch F1",
+  lwWER: "Loan Word WER",
   PIER: "Phoneme-Informed ER",
-  toWER: "Time-Offset WER",
-  OIWER: "Overlap-Informed WER",
+  WIL: "Word Information Lost",
 };
-// For these, lower is better. For SemanticSim and CS_F1, higher is better.
+// Higher = better for similarity and F1 scores; lower = better for everything
+// else (WER, CER, lwWER, PIER, WIL).
 const HIGHER_IS_BETTER = new Set(["SemanticSim", "CS_F1"]);
 
-// 1. Per-language overall leaderboard for each metric.
-const languages = Array.from(new Set(allRows.map((r) => r.language).filter(Boolean))).sort();
+// 1. Per-(scope, language) leaderboard for each metric.
+//    Scope = "All" | "Indic" | "International". Language list is filtered
+//    to whatever exists within the selected scope so the UI never offers
+//    an invalid combination.
+const allLanguages = Array.from(new Set(allRows.map((r) => r.language).filter(Boolean))).sort();
+const indicLanguages = Array.from(new Set(indicRows.map((r) => r.language).filter(Boolean))).sort();
+const intlLanguagesAll = Array.from(new Set(intlRows.map((r) => r.language).filter(Boolean))).sort();
 
-function leaderboardFor(language, metric) {
-  const rows = language === "All" ? allRows : allRows.filter((r) => r.language === language);
+function rowsForScope(scope) {
+  if (scope === "Indic") return indicRows;
+  if (scope === "International") return intlRows;
+  return allRows;
+}
+
+function leaderboardFor(scope, language, metric) {
+  const base = rowsForScope(scope);
+  const rows = language === "All" ? base : base.filter((r) => r.language === language);
   const byModel = groupBy(rows, (r) => r.key);
   const out = [];
   for (const [key, group] of byModel.entries()) {
@@ -211,7 +334,6 @@ function leaderboardFor(language, metric) {
       value: m,
       n: values.length,
       tier: MODEL_INFO[key]?.tier ?? "—",
-      // pair metric: WER alongside whatever is selected (so the right-of-bar number is meaningful)
       wer: mean(group.map((r) => r.WER).filter((v) => v !== null)),
     });
   }
@@ -219,47 +341,78 @@ function leaderboardFor(language, metric) {
   return out;
 }
 
+const SCOPES = ["All", "Indic", "International"];
+const scopedLanguages = {
+  All: allLanguages,
+  Indic: indicLanguages,
+  International: intlLanguagesAll,
+};
 const leaderboard = {};
-for (const lang of ["All", ...languages]) {
-  leaderboard[lang] = {};
-  for (const metric of METRICS) {
-    leaderboard[lang][metric] = leaderboardFor(lang, metric);
+for (const scope of SCOPES) {
+  leaderboard[scope] = {};
+  for (const lang of ["All", ...scopedLanguages[scope]]) {
+    leaderboard[scope][lang] = {};
+    for (const metric of METRICS) {
+      leaderboard[scope][lang][metric] = leaderboardFor(scope, lang, metric);
+    }
   }
 }
 
-// 2. Cohort splits — by region (same/cross state), gender, age, overlap, density, gap, duration.
-const COHORT_DIMS = {
-  Region: "region",
-  Gender: "gender",
-  Age: "age",
-  Overlap: "overlap",
-  Gap: "gap",
-  Density: "density",
-  Duration: "duration_cat",
-};
+// Keep `languages` as a flat list for any legacy consumer (cohort code etc.)
+const languages = allLanguages;
+
+// 2. Cohort splits — every model is reported for every canonical category in
+//    the dimension, so the chart always has a consistent axis. Models with no
+//    samples in a given category get { value: null, n: 0 } so the UI can
+//    render an empty cell instead of pretending the model is missing data.
+const COHORT_DIMS = Object.keys(COHORT_SCHEMAS); // [Region, Gender, Age, Overlap, Gap, Density, Duration]
 
 function cohortSplit(dim, metric) {
-  const field = COHORT_DIMS[dim];
-  if (!field) return [];
-  // Per-category numbers must come from rows that have the cohort field;
-  // but `overall` for a model needs to match the leaderboard, so it's
-  // computed across ALL rows for that model regardless of cohort presence.
-  const byKeyForCats = groupBy(allRows.filter((r) => r[field]), (r) => r.key);
+  const schema = COHORT_SCHEMAS[dim];
+  if (!schema) return [];
+  const field = schema.field;
+  const cats = schema.order; // canonical, ordered
+  // Group every model that exists; inside each group, restrict to rows whose
+  // dim-field landed in a canonical category. `overall` is computed on that
+  // same restricted set so the bars and the headline number are internally
+  // consistent (a weighted average of the visible categories).
   const byKeyAll = groupBy(allRows, (r) => r.key);
-  const cats = Array.from(new Set(allRows.map((r) => r[field]).filter(Boolean)));
   const out = [];
-  for (const [key, group] of byKeyForCats.entries()) {
+  for (const [key, allForModel] of byKeyAll.entries()) {
+    const dimRows = allForModel.filter((r) => r[field]);
     const perCat = {};
+    let havePerCatData = false;
+    let weightedSum = 0;
+    let weightedN = 0;
     for (const cat of cats) {
-      const xs = group.filter((g) => g[field] === cat).map((g) => g[metric]).filter((v) => v !== null);
-      if (xs.length < 2) continue;
-      perCat[cat] = { value: mean(xs), n: xs.length };
+      const xs = dimRows.filter((g) => g[field] === cat).map((g) => g[metric]).filter((v) => v !== null);
+      if (xs.length >= 2) {
+        const m = mean(xs);
+        perCat[cat] = { value: m, n: xs.length };
+        weightedSum += m * xs.length;
+        weightedN += xs.length;
+        havePerCatData = true;
+      } else {
+        perCat[cat] = { value: null, n: xs.length };
+      }
     }
-    const valuesArr = Object.values(perCat).map((v) => v.value);
-    if (valuesArr.length < 2) continue;
-    const allForModel = byKeyAll.get(key) || group;
-    const overall = mean(allForModel.map((r) => r[metric]).filter((v) => v !== null));
-    const spread = Math.max(...valuesArr) - Math.min(...valuesArr);
+    if (!havePerCatData) {
+      // Surface the model with empty bars rather than silently dropping it,
+      // but skip computing a synthetic "overall" we can't substantiate.
+      const fallback = mean(allForModel.map((r) => r[metric]).filter((v) => v !== null));
+      if (fallback === null) continue;
+      out.push({
+        key,
+        name: modelDisplay(key),
+        overall: fallback,
+        delta: 0,
+        categories: perCat,
+      });
+      continue;
+    }
+    const overall = weightedN ? weightedSum / weightedN : null;
+    const valuesArr = Object.values(perCat).filter((v) => v.value !== null).map((v) => v.value);
+    const spread = valuesArr.length >= 2 ? Math.max(...valuesArr) - Math.min(...valuesArr) : 0;
     out.push({
       key,
       name: modelDisplay(key),
@@ -273,7 +426,7 @@ function cohortSplit(dim, metric) {
 }
 
 const cohort = {};
-for (const dim of Object.keys(COHORT_DIMS)) {
+for (const dim of COHORT_DIMS) {
   cohort[dim] = {};
   for (const metric of METRICS) {
     cohort[dim][metric] = cohortSplit(dim, metric);
@@ -328,13 +481,13 @@ for (const lang of ["All", ...intlLanguages]) {
 const heroStats = {
   models: Array.from(new Set([...indicRows.map((r) => r.key), ...intlRows.map((r) => r.key)])).length,
   languages: Array.from(new Set([...indicRows.map((r) => r.language), ...intlRows.map((r) => r.language)].filter(Boolean))).length,
-  cohorts: Object.keys(COHORT_DIMS).length,
+  cohorts: COHORT_DIMS.length,
 };
 
 // 6. Best-of summary for findings.
 const findings = (() => {
-  const overall = leaderboardFor("All", "WER");
-  const csOverall = leaderboardFor("All", "CS_F1");
+  const overall = leaderboardFor("All", "All", "WER");
+  const csOverall = leaderboardFor("All", "All", "CS_F1");
   const overlapSplit = cohortSplit("Overlap", "WER");
   const regionSplit = cohortSplit("Region", "WER");
   return {
@@ -358,9 +511,38 @@ const out = {
   hero: heroStats,
   languages,
   intlLanguages,
+  scopes: SCOPES,
+  scopedLanguages,
   leaderboard,
   cohort,
-  cohortDims: Object.keys(COHORT_DIMS),
+  cohortDims: COHORT_DIMS,
+  cohortSchemas: Object.fromEntries(
+    Object.entries(COHORT_SCHEMAS).map(([k, v]) => [k, { field: v.field, order: v.order }])
+  ),
+  // Compact per-row dataset for client-side cohort aggregation. Field-key
+  // shorthand keeps the JSON small (~340 KB for ~2.2k rows).
+  rawRows: allRows.map((r) => ({
+    k: r.key,
+    s: r._scope,
+    l: r.language,
+    region: r.region,
+    gender: r.gender,
+    age: r.age,
+    density: r.density,
+    duration_cat: r.duration_cat,
+    overlap: r.overlap,
+    gap: r.gap,
+    WER: r.WER,
+    CER: r.CER,
+    SemanticSim: r.SemanticSim,
+    CS_F1: r.CS_F1,
+    lwWER: r.lwWER,
+    PIER: r.PIER,
+    WIL: r.WIL,
+  })),
+  modelInfoFlat: Object.fromEntries(
+    Object.entries(MODEL_INFO).map(([k, v]) => [k, v.name])
+  ),
   csF1,
   intl,
   findings,
@@ -372,4 +554,4 @@ fs.writeFileSync(path.join(outDir, "data.json"), JSON.stringify(out));
 console.log("Wrote lib/data.json");
 console.log("hero:", heroStats);
 console.log("languages:", languages.length, "intl:", intlLanguages.length);
-console.log("leaderboard sample:", leaderboardFor("All", "WER").slice(0, 5).map((r) => `${r.name}: ${(r.value * 100).toFixed(2)}%`));
+console.log("leaderboard sample:", leaderboardFor("All", "All", "WER").slice(0, 5).map((r) => `${r.name}: ${(r.value * 100).toFixed(2)}%`));
