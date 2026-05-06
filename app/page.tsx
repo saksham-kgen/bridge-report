@@ -9,9 +9,14 @@ const data = dataJson as unknown as {
   metricLabels: Record<string, string>;
   higherIsBetter: string[];
   languages: string[];
-  leaderboard: Record<string, Record<string, any[]>>;
+  scopes: any;
+  scopedLanguages: any;
+  leaderboard: Record<string, Record<string, Record<string, any[]>>>;
   cohort: Record<string, Record<string, any[]>>;
   cohortDims: string[];
+  cohortSchemas: any;
+  rawRows: any[];
+  modelInfoFlat: Record<string, string>;
   csF1: any[];
   findings: any;
 };
